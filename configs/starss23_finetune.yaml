@@ -1,0 +1,20 @@
+# 阶段二：STARSS23 MIC (4ch 四面体) 微调；教师为冻结骨干吃 STARSS23 的真实 FOA 录音
+# 建议先用 teacher_foa.yaml 在 STARSS23 FOA 上再微调一个教师（exp_name=stage0b_teacher_starss_foa），然后指向它
+_base_: base.yaml
+exp_name: stage2_starss23_mic
+data:
+  train_h5: /kaggle/working/data/h5/starss23_train.h5
+  val_h5: /kaggle/working/data/h5/starss23_test.h5
+  chunk_sec: 5.0
+  mic_drop_prob: 0.2       # STARSS23 只有 4 个麦克风；保留少量子集增强以维持阵列无关性
+  min_mics: 3
+train:
+  epochs: 40
+  lr: 0.0003
+  lr_backbone: 0.00005
+  init_from: /kaggle/working/ckpt/stage1_sim_pretrain/best.pt
+teacher:
+  mode: frozen_backbone
+  ckpt: /kaggle/working/ckpt/stage0_teacher_foa/best.pt   # 或 STARSS23-FOA 上微调过的教师
+loss:
+  foa_recon: 0.02          # STARSS23 的 FOA 来自同一 em32 球阵，不完全是“理想”FOA，权重调小

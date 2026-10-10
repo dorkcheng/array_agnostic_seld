@@ -1,0 +1,12 @@
+# 阶段三：蒸馏一个小模型（StandIn 骨干 + 小残差前端）用于手机端 ONNX 导出
+_base_: base.yaml
+exp_name: stage3_distill_small
+model:
+  residual: {enabled: true, hidden: 16, n_tac: 2, freq_stride: 8}
+  backbone: {type: standin, channels: [24, 48, 96], d_model: 96, n_layers: 1}
+teacher:
+  mode: full_model
+  cfg: configs/starss23_finetune.yaml
+  ckpt: /kaggle/working/ckpt/stage2_starss23_mic/best.pt
+loss: {distill: 1.0, distill_emb: 0.0, foa_recon: 0.02}
+train: {epochs: 30, lr: 0.001, lr_backbone: 0.001, init_from: null, batch_size: 16}

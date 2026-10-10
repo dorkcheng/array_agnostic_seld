@@ -1,0 +1,13 @@
+# 阶段零：PSELDNets 骨干 + 新的 13 类 multi-ACCDOA(+距离) 头，只在理想 FOA 上训练 -> 作为后续阶段的冻结教师
+# （PSELDNets 原始头是 170 类且无距离，不能直接当教师）
+_base_: base.yaml
+exp_name: stage0_teacher_foa
+model:
+  residual: {enabled: false}
+teacher: {mode: none}
+loss: {distill: 0.0, foa_recon: 0.0}
+train:
+  foa_only: true
+  epochs: 15
+  lr: 0.0001
+  lr_backbone: 0.0001

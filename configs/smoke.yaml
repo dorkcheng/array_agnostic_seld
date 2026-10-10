@@ -1,0 +1,18 @@
+# CPU 冒烟测试：小模型、3s 片段、dummy 类别
+_base_: base.yaml
+exp_name: smoke
+out_dir: /workspace/smoke/ckpt
+audio: {}
+data:
+  train_h5: /workspace/smoke/h5/train.h5
+  val_h5: /workspace/smoke/h5/test.h5
+  n_classes: 5
+  chunk_sec: 2.0
+  num_workers: 0
+model:
+  ls: {n_dirs: 120}
+  residual: {enabled: true, hidden: 8, n_tac: 1, freq_stride: 8}
+  backbone: {type: standin, channels: [8, 16, 32], d_model: 32, n_layers: 1}
+teacher: {mode: shared}
+loss: {ideal_seld: 0.5}
+train: {epochs: 2, batch_size: 4, log_every: 2, warmup_epochs: 0}

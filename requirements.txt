@@ -1,0 +1,12 @@
+torch>=2.1
+numpy
+scipy
+pyroomacoustics>=0.7
+soundfile
+h5py
+pyyaml
+onnx
+onnxruntime
+onnxscript
+huggingface_hub
+# PSELDNets 骨干（CNN14-Conformer）只依赖 torch；其仓库 clone 到 third_party/PSELDNets 即可

@@ -1,0 +1,9 @@
+# 阶段一：大规模仿真数据上训练前端（+ 微调 PSELDNets 骨干）
+# 教师 = 阶段零在理想 FOA 上训练好的骨干（冻结）；学生从同一权重初始化
+_base_: base.yaml
+exp_name: stage1_sim_pretrain
+teacher:
+  mode: frozen_backbone
+  ckpt: /kaggle/working/ckpt/stage0_teacher_foa/best.pt
+train:
+  init_from: /kaggle/working/ckpt/stage0_teacher_foa/best.pt

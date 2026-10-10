@@ -1,0 +1,73 @@
+# 基础配置（其它配置通过 _base_ 继承并覆盖）
+exp_name: base
+out_dir: /kaggle/working/ckpt      # 断点目录：每 epoch 写 last.pt（自动续训）与 best.pt
+seed: 2026
+
+audio:
+  fs: 24000          # 与 PSELDNets 一致
+  n_fft: 1024
+  hop: 240           # 10ms
+  n_mels: 64
+  label_hop: 0.1     # 100ms 标签帧
+  iv_xyz_index: [1, 2, 3]   # 与 PSELDNets 一致（实测：[1,2,3] 时预训练 mACCDOA 在我们 ACN FOA 上 DOA 中位误差 31°，[3,1,2] 为 112°）
+
+data:
+  train_h5: /kaggle/working/data/h5/sim_train.h5
+  val_h5: /kaggle/working/data/h5/sim_val.h5
+  n_classes: 13      # STARSS23 的 13 类；仿真时 source csv 的 class_idx 需映射到这 13 类
+  chunk_sec: 5.0     # 训练裁剪长度（5s=500 特征帧，被 8 整除，适配 CNN 下采样）
+  dist_scale: 5.0    # 距离归一化（米）
+  mic_drop_prob: 0.5 # 随机麦克风子集增强概率
+  min_mics: 2
+  max_mics: 8
+  num_workers: 4
+
+model:
+  ls: {n_dirs: 240, reg: 0.01}
+  residual: {enabled: true, hidden: 32, n_tac: 3, freq_stride: 4}
+  backbone:
+    type: pseldnets                 # pseldnets | standin
+    repo_path: third_party/PSELDNets
+    ckpt_path: /kaggle/working/ckpts/mACCDOA-CNN14-Conformer-0.582.ckpt   # TODO: 按实际路径修改
+    encoder: CNN12
+    num_features: [64, 128, 256, 512, 1024, 2048]
+    decoder: conformer
+    num_decoder_layers: 1
+    trainable: all                  # all | decoder_head | head
+    standin: {channels: [32, 64, 128], d_model: 128, n_layers: 2}   # 找不到 PSELDNets 仓库时的替身
+
+teacher:
+  mode: frozen_backbone   # frozen_backbone(冻结的预训练骨干吃理想FOA) | shared(同一骨干吃理想FOA, 不回传) | full_model | none
+  ckpt: null              # frozen_backbone: 可选，从某个完整模型 ckpt 里取 backbone.*；full_model: 教师完整模型 ckpt
+  cfg: null               # full_model 时教师的配置文件
+
+loss:
+  seld: 1.0
+  dist_weight: 1.0
+  distill: 0.5
+  distill_emb: 0.1        # 仅当学生/教师嵌入维度一致时生效
+  distill_conf_thr: 0.0   # >0: 教师 ACCDOA 模长低于阈值处只蒸馏“无事件”
+  foa_recon: 0.05
+  foa_recon_fmax: 8000
+  ideal_seld: 0.0         # shared 模式下骨干在理想 FOA 上的 SELD 损失权重
+
+train:
+  epochs: 30
+  batch_size: 8           # 每张卡；CNN14-Conformer + 5s + 8 mic 在 T4 fp16 下约 10GB（需按显存调整）
+  lr: 0.001               # 前端
+  lr_backbone: 0.0001     # 预训练骨干
+  weight_decay: 0.01
+  warmup_epochs: 1
+  grad_clip: 5.0
+  amp: true
+  max_hours: 11.3         # Kaggle 12h 会话：超时前保存断点退出，重跑同一命令自动续训
+  auto_resume: true
+  resume_from: null       # 例如 /kaggle/input/<上个会话输出>/ckpt/stage1_sim_pretrain/last.pt（exp 目录无 last.pt 时使用）
+  init_from: null         # 阶段二：从阶段一 best.pt 初始化
+  foa_only: false         # 阶段零：只用理想 FOA 训练骨干（=教师），见 configs/teacher_foa.yaml
+  log_every: 50
+  val_every: 1
+  find_unused_parameters: false
+
+eval:
+  thr: 0.5
